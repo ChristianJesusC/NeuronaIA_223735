@@ -14,3 +14,4 @@ y_scaled = scaler_y.fit_transform(y)
 
 data_scaled = np.hstack([X_scaled, y_scaled])
 np.savetxt('B223735_normalized.csv', data_scaled, delimiter=',', fmt='%.6f')
+
