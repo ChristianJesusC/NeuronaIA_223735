@@ -1,17 +1,21 @@
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from backend.core.state import state
-from backend.services.data_service import detectar_tipo_salida, parse_csv
+from backend.services.data_service import detectar_tipo_salida, get_preview, parse_csv
 
 router = APIRouter()
 
 
 @router.post("/upload-csv")
-async def upload_csv(file: UploadFile = File(...)):
+async def upload_csv(
+    file: UploadFile = File(...),
+    has_header: bool = Form(False),
+):
     try:
         contents = await file.read()
-        df = parse_csv(contents)
-        state.df = df
+        df, col_mappings = parse_csv(contents, has_header=has_header)
+        state.df          = df
+        state.col_mappings = col_mappings
 
         tipo = detectar_tipo_salida(df)
         if tipo == "categorical":
@@ -24,13 +28,16 @@ async def upload_csv(file: UploadFile = File(...)):
             state.class_names   = []
             state.n_classes     = 1
 
+        preview = get_preview(df)
+
         return {
-            "message":      "Archivo cargado exitosamente",
-            "num_samples":  int(df.shape[0]),
-            "num_features": int(df.shape[1] - 1),
+            "message":       "Archivo cargado exitosamente",
+            "num_samples":   int(df.shape[0]),
+            "num_features":  int(df.shape[1] - 1),
             "is_multiclass": state.is_multiclass,
-            "n_classes":    state.n_classes,
-            "class_names":  state.class_names,
+            "n_classes":     state.n_classes,
+            "class_names":   state.class_names,
+            "preview":       preview,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al procesar archivo: {e}")

@@ -23,10 +23,13 @@ class AppState:
     n_classes: int = 1
     # Historial de comparaciones
     comparaciones: list = None
+    # Mappings de columnas categóricas de features: {col_index: {"texto": numero, ...}}
+    col_mappings: dict = None
 
     def __init__(self):
         self.class_names   = []
         self.comparaciones = []
+        self.col_mappings  = {}
 
 
 class ProgressTracker:

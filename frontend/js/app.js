@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
 function uploadCSV(file) {
   var fd = new FormData();
   fd.append('file', file);
+  fd.append('has_header', document.getElementById('has-header').checked);
   fetch('/upload-csv', { method: 'POST', body: fd })
     .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
     .then(function (res) {
@@ -57,6 +58,9 @@ function uploadCSV(file) {
         nFeatures  = res.d.num_features;
         updateDiagram();
 
+        // Mostrar preview del dataset
+        if (res.d.preview) showDatasetPreview(res.d.preview, res.d.num_samples);
+
         // Auto-configurar salida para multiclase
         if (isMulticlass) {
           document.getElementById('neuronas-salida').value = res.d.n_classes;
@@ -71,6 +75,36 @@ function uploadCSV(file) {
       }
     })
     .catch(function (err) { alert('Error de conexión: ' + err); });
+}
+
+/* ════════════════════════════════════════════════════════════
+   DATASET PREVIEW
+════════════════════════════════════════════════════════════ */
+function showDatasetPreview(preview, totalRows) {
+  var card   = document.getElementById('dataset-card');
+  var info   = document.getElementById('dataset-info');
+  var thead  = document.getElementById('dataset-thead');
+  var tbody  = document.getElementById('dataset-tbody');
+
+  var shown = preview.rows.length;
+  info.textContent = totalRows + ' filas · ' + preview.columns.length + ' columnas' +
+    (totalRows > shown ? '  (mostrando primeras ' + shown + ')' : '');
+
+  thead.innerHTML = '<tr>' +
+    preview.columns.map(function (c, i) {
+      var isLast = i === preview.columns.length - 1;
+      return '<th style="text-align:' + (isLast ? 'center' : 'right') + ';' +
+             (isLast ? 'color:var(--green);' : '') + '">' + c + '</th>';
+    }).join('') + '</tr>';
+
+  tbody.innerHTML = preview.rows.map(function (row) {
+    return '<tr>' + row.map(function (v, i) {
+      var isLast = i === row.length - 1;
+      return '<td style="' + (isLast ? 'color:var(--green);font-weight:700;text-align:center;' : '') + '">' + v + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+
+  card.style.display = 'block';
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -106,6 +140,7 @@ function startTraining() {
     activacion_salida: document.getElementById('activacion-salida').value,
     max_epochs:      +document.getElementById('max-epochs').value,
     normalizar:       document.getElementById('normalizar').checked,
+    paciencia:        +document.getElementById('paciencia').value,
   };
 
   cfgMaxEpochs = config.max_epochs;
@@ -321,11 +356,7 @@ function runPredict() {
   var raw = document.getElementById('predict-input').value.trim();
   if (!raw) return;
 
-  var datos = raw.split('\n')
-    .filter(function (l) { return l.trim(); })
-    .map(function (l) {
-      return l.split(',').map(function (v) { return parseFloat(v.trim()); });
-    });
+  var datos = raw.split('\n').filter(function (l) { return l.trim(); });
 
   var normalizar = document.getElementById('normalizar').checked;
 

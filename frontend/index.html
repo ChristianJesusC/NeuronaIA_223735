@@ -66,6 +66,10 @@
         </div>
         <input type="file" id="csv-file" accept=".csv" />
         <label class="checkbox-row" style="margin-top:6px;">
+          <input type="checkbox" id="has-header" />
+          El CSV tiene cabecera
+        </label>
+        <label class="checkbox-row">
           <input type="checkbox" id="normalizar" checked />
           Normalizar datos (StandardScaler)
         </label>
@@ -127,6 +131,9 @@
         <input type="number" id="eps" value="0.1" min="0.0001" max="1000" step="0.01" />
         <label>Máx. épocas</label>
         <input type="number" id="max-epochs" value="300" min="10" max="10000" step="10" />
+        <label>Paciencia — épocas sin mejora en error total</label>
+        <input type="number" id="paciencia" value="0" min="0" max="1000" step="1"
+               title="0 = desactivado. Si en N épocas consecutivas el error total no mejora, el fold termina." />
       </section>
 
       <button class="train-btn" id="train-btn" disabled onclick="startTraining()">
@@ -139,6 +146,18 @@
 
   <!-- ╔══════ MAIN ══════╗ -->
   <main class="main">
+
+    <!-- Preview del dataset -->
+    <div class="card" id="dataset-card" style="display:none;">
+      <div class="section-hdr">Dataset cargado</div>
+      <p id="dataset-info" style="font-size:.76rem;color:var(--gray-400);margin-bottom:8px;"></p>
+      <div class="diagram-scroll-wrap" style="max-height:220px;overflow-y:auto;">
+        <table class="log-table" id="dataset-table" style="font-family:system-ui;">
+          <thead id="dataset-thead"></thead>
+          <tbody id="dataset-tbody"></tbody>
+        </table>
+      </div>
+    </div>
 
     <!-- Diagrama de red (siempre visible) -->
     <div class="card" id="diagram-card">
@@ -220,7 +239,7 @@
         Introduce los datos de entrada separados por coma, una muestra por línea.
       </p>
       <textarea id="predict-input"
-                placeholder="1.5, 2.3, 4.1&#10;0.8, 1.1, 3.4"></textarea>
+                placeholder="Pega filas del CSV tal como están, una por línea.&#10;Ejemplo: 56,221111,&quot;6,5&quot;,12,&quot;0,7&quot;,1,6,..."></textarea>
       <button class="pred-btn" onclick="runPredict()">Predecir</button>
       <div class="pred-result" id="pred-result"></div>
     </div>

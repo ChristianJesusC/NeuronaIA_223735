@@ -56,6 +56,7 @@ def run_training(config: TrainingConfig) -> None:
             max_epochs=config.max_epochs,
             callback=fold_callback,
             is_multiclass=state.is_multiclass,
+            paciencia=config.paciencia,
         )
 
         folds_data = []
@@ -73,7 +74,7 @@ def run_training(config: TrainingConfig) -> None:
                 "epoca_convergencia":       int(f["epoca_convergencia"]),
                 "error_convergencia_train": safe_float(f["error_convergencia_train"]),
                 "error_convergencia_test":  safe_float(f["error_convergencia_test"]),
-                "diferencia_convergencia":  safe_float(f["diferencia_convergencia"]),
+                "error_convergencia_total": safe_float(f["error_convergencia_total"]),
             }
             if state.is_multiclass:
                 fd["accuracy_train"] = safe_float(f["accuracy_train"])

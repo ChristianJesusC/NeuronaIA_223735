@@ -17,3 +17,4 @@ class TrainingConfig(BaseModel):
     activacion_salida: str = "Lineal"
     max_epochs: int = 300
     normalizar: bool = True
+    paciencia: int = 0   # 0 = desactivado; N = épocas sin mejora en error total antes de parar
