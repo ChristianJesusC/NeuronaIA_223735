@@ -4,12 +4,14 @@
    – Depende de layers.js (layersState, nFeatures, updateDiagram)
 ════════════════════════════════════════════════════════════ */
 
-var dataLoaded   = false;
-var sseSource    = null;
-var cfgMaxEpochs = 300;
-var cfgK         = 5;
-var lcChart      = null;
-var foldLogs     = {};   // { fold_num: [{epoch, error_train, error_val}, ...] }
+var dataLoaded    = false;
+var sseSource     = null;
+var cfgMaxEpochs  = 300;
+var cfgK          = 5;
+var lcChart       = null;
+var foldLogs      = {};   // { fold_num: [{epoch, error_train, error_val}, ...] }
+var isMulticlass  = false;
+var classNames    = [];
 
 /* ════════════════════════════════════════════════════════════
    CSV UPLOAD
@@ -43,14 +45,27 @@ function uploadCSV(file) {
     .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
     .then(function (res) {
       if (res.ok) {
-        document.getElementById('file-label').textContent =
-          file.name + '  (' + res.d.num_samples + ' filas · ' + res.d.num_features + ' features)';
+        isMulticlass = res.d.is_multiclass || false;
+        classNames   = res.d.class_names   || [];
+
+        var label = file.name + '  (' + res.d.num_samples + ' filas · ' + res.d.num_features + ' features)';
+        if (isMulticlass) label += '  · Multiclase: ' + classNames.join(', ');
+        document.getElementById('file-label').textContent = label;
         document.getElementById('drop-zone').classList.add('loaded');
         document.getElementById('train-btn').disabled = false;
         dataLoaded = true;
-        nFeatures  = res.d.num_features;   // ← actualiza global de layers.js
+        nFeatures  = res.d.num_features;
         updateDiagram();
-        log('CSV cargado: ' + res.d.num_samples + ' muestras, ' + res.d.num_features + ' features');
+
+        // Auto-configurar salida para multiclase
+        if (isMulticlass) {
+          document.getElementById('neuronas-salida').value = res.d.n_classes;
+          document.getElementById('activacion-salida').value = 'Softmax';
+          updateDiagram();
+          log('Multiclase detectado: ' + res.d.n_classes + ' clases (' + classNames.join(', ') + '). Salida auto-configurada: ' + res.d.n_classes + ' neuronas · Softmax');
+        } else {
+          log('CSV cargado: ' + res.d.num_samples + ' muestras, ' + res.d.num_features + ' features');
+        }
       } else {
         alert('Error al cargar CSV: ' + (res.d.detail || 'desconocido'));
       }
@@ -184,17 +199,22 @@ function displayResults(result) {
   /* Summary stats */
   var sg = document.getElementById('summary-grid');
   sg.innerHTML = '';
-  [
-    { label: 'K Folds',             value: result.k },
-    { label: 'Muestras',            value: result.total_samples },
-    { label: 'Error Train Prom.',   value: result.error_train_promedio.toFixed(4) },
-    { label: '± Std Train',         value: result.std_train.toFixed(4) },
-    { label: 'Error Val Prom.',     value: result.error_test_promedio.toFixed(4) },
-    { label: '± Std Val',           value: result.std_test.toFixed(4) },
-    { label: 'Error Total Pond.',   value: result.error_total_promedio.toFixed(4) },
-    { label: '± Std Total',         value: result.std_total.toFixed(4) },
-    { label: 'Mejor Fold',          value: result.mejor_fold, green: true },
-  ].forEach(function (s) {
+  var stats = [
+    { label: 'K Folds',           value: result.k },
+    { label: 'Muestras',          value: result.total_samples },
+    { label: 'Error Train Prom.', value: result.error_train_promedio.toFixed(4) },
+    { label: '± Std Train',       value: result.std_train.toFixed(4) },
+    { label: 'Error Val Prom.',   value: result.error_test_promedio.toFixed(4) },
+    { label: '± Std Val',         value: result.std_test.toFixed(4) },
+    { label: 'Error Total Pond.', value: result.error_total_promedio.toFixed(4) },
+    { label: '± Std Total',       value: result.std_total.toFixed(4) },
+  ];
+  if (result.is_multiclass) {
+    stats.push({ label: 'Accuracy Train', value: (result.accuracy_train_prom * 100).toFixed(1) + '%', green: true });
+    stats.push({ label: 'Accuracy Val',   value: (result.accuracy_test_prom  * 100).toFixed(1) + '%', green: true });
+  }
+  stats.push({ label: 'Mejor Fold', value: result.mejor_fold, green: true });
+  stats.forEach(function (s) {
     sg.innerHTML +=
       '<div class="stat">' +
         '<div class="stat-label">' + s.label + '</div>' +
@@ -207,6 +227,10 @@ function displayResults(result) {
   fg.innerHTML = '';
   result.folds.forEach(function (fold) {
     var best = fold.fold === result.mejor_fold;
+    var accHtml = result.is_multiclass
+      ? '<div class="kv"><span>Accuracy Train</span><span>' + (fold.accuracy_train * 100).toFixed(1) + '%</span></div>' +
+        '<div class="kv"><span>Accuracy Val</span><span>'   + (fold.accuracy_test  * 100).toFixed(1) + '%</span></div>'
+      : '';
     fg.innerHTML +=
       '<div class="fold-card ' + (best ? 'best' : '') + '">' +
         '<div class="fold-title">Fold ' + fold.fold +
@@ -214,6 +238,7 @@ function displayResults(result) {
         '<div class="kv"><span>Error Train</span><span>'       + fold.error_train.toFixed(4)  + '</span></div>' +
         '<div class="kv"><span>Error Val</span><span>'         + fold.error_test.toFixed(4)   + '</span></div>' +
         '<div class="kv"><span>Error Total Pond.</span><span>' + fold.error_total.toFixed(4)  + '</span></div>' +
+        accHtml +
         '<div class="kv"><span>Época conv.</span><span>'       + fold.epoca_convergencia       + '</span></div>' +
         '<div class="kv"><span>Épocas tot.</span><span>'       + fold.epocas                   + '</span></div>' +
       '</div>';
@@ -224,6 +249,9 @@ function displayResults(result) {
 
   /* Fold logs */
   displayFoldLogs(result);
+
+  /* Comparaciones */
+  loadComparaciones();
 
   document.getElementById('results-card').style.display  = 'block';
   document.getElementById('chart-card').style.display    = 'block';
@@ -311,13 +339,81 @@ function runPredict() {
       if (!res.ok) throw new Error(res.d.detail);
       var el = document.getElementById('pred-result');
       el.style.display = 'block';
-      el.textContent   =
-        'Fold usado: ' + res.d.mejor_fold + '\n' +
-        res.d.predicciones.map(function (p, i) {
-          return 'Muestra ' + (i + 1) + ': ' + p.toFixed(6);
-        }).join('\n');
+      if (res.d.probabilidades) {
+        // Multiclase: mostrar clase predicha + probabilidades
+        el.textContent = 'Fold usado: ' + res.d.mejor_fold + '\n\n' +
+          res.d.predicciones.map(function (clase, i) {
+            var probs = res.d.probabilidades[i];
+            var probStr = res.d.clases.map(function (c, j) {
+              return c + ': ' + (probs[j] * 100).toFixed(1) + '%';
+            }).join('  |  ');
+            return 'Muestra ' + (i + 1) + ': ' + clase + '\n  ' + probStr;
+          }).join('\n');
+      } else {
+        el.textContent =
+          'Fold usado: ' + res.d.mejor_fold + '\n' +
+          res.d.predicciones.map(function (p, i) {
+            return 'Muestra ' + (i + 1) + ': ' + (typeof p === 'number' ? p.toFixed(6) : p);
+          }).join('\n');
+      }
     })
     .catch(function (err) { alert('Error en predicción: ' + err.message); });
+}
+
+/* ════════════════════════════════════════════════════════════
+   COMPARACIÓN DE MODELOS
+════════════════════════════════════════════════════════════ */
+function loadComparaciones() {
+  fetch('/comparaciones')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data || data.length === 0) return;
+
+      var hasAcc   = data.some(function (r) { return r.accuracy !== undefined; });
+      var thead    = document.getElementById('compare-thead');
+      var tbody    = document.getElementById('compare-tbody');
+
+      thead.innerHTML =
+        '<tr>' +
+          '<th style="text-align:center;">#</th>' +
+          '<th style="text-align:left;">Arquitectura</th>' +
+          '<th>K</th>' +
+          '<th>Error Train</th>' +
+          '<th>Error Val</th>' +
+          '<th>Error Total</th>' +
+          (hasAcc ? '<th>Accuracy Val</th>' : '') +
+          '<th>Mejor Fold</th>' +
+          '<th>Tipo</th>' +
+        '</tr>';
+
+      // Ordenar por error_total ascendente
+      var sorted = data.slice().sort(function (a, b) { return a.error_total - b.error_total; });
+
+      tbody.innerHTML = sorted.map(function (r, idx) {
+        var isBest = idx === 0;
+        return '<tr' + (isBest ? ' style="background:var(--accent-lt);font-weight:700;"' : '') + '>' +
+          '<td style="text-align:center;">' + r.run + (isBest ? ' ★' : '') + '</td>' +
+          '<td style="text-align:left;font-family:monospace;font-size:.72rem;">' + r.arquitectura + '</td>' +
+          '<td>' + r.k + '</td>' +
+          '<td>' + r.error_train.toFixed(4) + '</td>' +
+          '<td>' + r.error_val.toFixed(4) + '</td>' +
+          '<td>' + r.error_total.toFixed(4) + '</td>' +
+          (hasAcc ? '<td>' + (r.accuracy !== undefined ? (r.accuracy * 100).toFixed(1) + '%' : '—') + '</td>' : '') +
+          '<td>' + r.mejor_fold + '</td>' +
+          '<td>' + r.tipo + '</td>' +
+        '</tr>';
+      }).join('');
+
+      document.getElementById('compare-card').style.display = 'block';
+    });
+}
+
+function clearComparaciones() {
+  fetch('/comparaciones', { method: 'DELETE' })
+    .then(function () {
+      document.getElementById('compare-card').style.display = 'none';
+      document.getElementById('compare-tbody').innerHTML = '';
+    });
 }
 
 /* ════════════════════════════════════════════════════════════

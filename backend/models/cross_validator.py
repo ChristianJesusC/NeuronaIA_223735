@@ -39,6 +39,7 @@ class CrossValidator:
         activacion_salida: str = "Lineal",
         max_epochs: int = 1000,
         callback=None,
+        is_multiclass: bool = False,
     ):
         """
         Ejecuta K-Fold Cross Validation con un modelo Keras por fold.
@@ -107,6 +108,18 @@ class CrossValidator:
             e_test  = float(np.linalg.norm(yc_ts - fold["yo_test"]))
             e_total = (e_train * n_train + e_test * n_test) / n_total
 
+            # Accuracy para clasificación multiclase
+            if is_multiclass:
+                acc_train = float(np.mean(
+                    np.argmax(yc_tr, axis=1) == np.argmax(fold["yo_train"], axis=1)
+                ))
+                acc_test = float(np.mean(
+                    np.argmax(yc_ts, axis=1) == np.argmax(fold["yo_test"], axis=1)
+                ))
+            else:
+                acc_train = None
+                acc_test  = None
+
             resultados_folds.append({
                 "fold": fold_num + 1,
                 "model": model,
@@ -123,6 +136,8 @@ class CrossValidator:
                 "error_convergencia_test": best_ev,
                 "diferencia_convergencia": float(mejor_diff),
                 "pesos_convergencia": best_pesos,
+                "accuracy_train": acc_train,
+                "accuracy_test":  acc_test,
             })
 
         n_total_dataset = X.shape[0]
@@ -137,15 +152,25 @@ class CrossValidator:
 
         mejor_idx = int(np.argmin([r["error_test"] for r in resultados_folds]))
 
+        # Accuracy promedio (solo multiclase)
+        if is_multiclass:
+            acc_train_prom = float(np.mean([r["accuracy_train"] for r in resultados_folds]))
+            acc_test_prom  = float(np.mean([r["accuracy_test"]  for r in resultados_folds]))
+        else:
+            acc_train_prom = None
+            acc_test_prom  = None
+
         return {
             "folds": resultados_folds,
-            "error_train_promedio": error_train_prom,
-            "error_test_promedio": error_test_prom,
-            "error_total_promedio": error_total_prom,
-            "std_train": std_train,
-            "std_test": std_test,
-            "std_total": std_total,
-            "epocas_promedio": float(np.mean([r["epocas"] for r in resultados_folds])),
-            "mejor_fold": resultados_folds[mejor_idx]["fold"],
-            "mejor_fold_idx": mejor_idx,
+            "error_train_promedio":  error_train_prom,
+            "error_test_promedio":   error_test_prom,
+            "error_total_promedio":  error_total_prom,
+            "std_train":             std_train,
+            "std_test":              std_test,
+            "std_total":             std_total,
+            "accuracy_train_prom":   acc_train_prom,
+            "accuracy_test_prom":    acc_test_prom,
+            "epocas_promedio":       float(np.mean([r["epocas"] for r in resultados_folds])),
+            "mejor_fold":            resultados_folds[mejor_idx]["fold"],
+            "mejor_fold_idx":        mejor_idx,
         }

@@ -17,6 +17,16 @@ class AppState:
     mejor_modelo = None
     mejor_fold_num: int = -1
     activacion_salida: str = "Lineal"
+    # Clasificación multiclase
+    is_multiclass: bool = False
+    class_names: list = None
+    n_classes: int = 1
+    # Historial de comparaciones
+    comparaciones: list = None
+
+    def __init__(self):
+        self.class_names   = []
+        self.comparaciones = []
 
 
 class ProgressTracker:

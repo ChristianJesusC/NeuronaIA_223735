@@ -38,3 +38,14 @@ async def resultados():
     if state.ultimo_resultado is None:
         raise HTTPException(status_code=404, detail="No hay resultados disponibles.")
     return state.ultimo_resultado
+
+
+@router.get("/comparaciones")
+async def comparaciones():
+    return state.comparaciones
+
+
+@router.delete("/comparaciones")
+async def limpiar_comparaciones():
+    state.comparaciones = []
+    return {"message": "Historial de comparaciones limpiado"}

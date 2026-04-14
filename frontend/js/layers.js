@@ -13,7 +13,7 @@ var layersState = [
 /* nFeatures se actualiza desde app.js cuando se carga el CSV */
 var nFeatures = 0;
 
-var ACTIVACIONES = ['ReLU', 'Lineal', 'Sigmoide', 'Binaria'];
+var ACTIVACIONES = ['ReLU', 'Lineal', 'Sigmoide', 'Softmax', 'Binaria'];
 
 /* ── Tabla de capas ocultas ──────────────────────────────── */
 function setNumCapas(n) {

@@ -109,6 +109,7 @@
                   <option value="Lineal">Lineal</option>
                   <option value="ReLU">ReLU</option>
                   <option value="Sigmoide">Sigmoide</option>
+                  <option value="Softmax">Softmax</option>
                   <option value="Binaria">Binaria</option>
                 </select>
               </td>
@@ -196,6 +197,20 @@
         ★ marca la época de convergencia (mínimo |Ee − Ev|). El fold abierto por defecto es el mejor.
       </p>
       <div id="foldlogs-container"></div>
+    </div>
+
+    <!-- Comparación de modelos -->
+    <div class="card" id="compare-card" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-hdr" style="margin-bottom:0;">Comparación de modelos</div>
+        <button class="diagram-dl-btn" onclick="clearComparaciones()">Limpiar</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="log-table" id="compare-table" style="font-family:system-ui;font-size:.78rem;">
+          <thead id="compare-thead"></thead>
+          <tbody id="compare-tbody"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Predicción -->
